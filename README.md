@@ -1,96 +1,294 @@
 # Enterprise ad fraud detection
 
-Spend a week reading [enterprise](/enterprise) ad-[fraud](/fraud-traffic-validation) pitches and you will hear the same number: [invalid traffic](/resources/best-invalid-traffic-detection-tools-2026) costs advertisers tens of billions a year. True, and useless. The number that should worry you is smaller and closer to home: what fraction of the conversions you reported to [Meta](/meta-conversion-api) last month came from a real human, and can you prove it?
+Let's be real. The enterprise ad fraud detection market is in a credibility crisis.
 
-Here is the honest read. Most enterprise ad-fraud detection is built for the front half of the funnel. Pre-bid filtering keeps your ad off junk inventory. Click verification catches fake clicks. [HUMAN](/alternative/human-security-alternative), DoubleVerify, IAS, all strong at that. But fraud does not stop at the click. It walks into your funnel, fills a form, completes a signup, fires a conversion event, and gets reported back to the ad platform as a win.
+DV holds around 68% market share. HUMAN and IAS round out the top three. All three were publicly bruised by Adalytics' March 2025 reports. IAS missed obscured bots 77% of the time in tested scenarios. Senator letters followed.
 
-This is not a "fraud is expensive" post. This is a buyer's framework for picking enterprise ad-fraud detection by funnel stage, and a blunt note on the stage almost nobody covers.
+Meanwhile fraud is exploding downstream. CTV fraud variants up 140% year over year (DV Q1 2026). 20.64% global IVT (Fraudlogix). 25% bot rate on paid lead forms (ActiveProspect). HUMAN's own 2026 report: automation has overtaken human traffic on the open web.
 
-Think of fraud detection in four stages: pre-bid, click, post-click, post-conversion. Most vendors own one or two. The post-conversion stage, the one where fraud signals feed back into your Conversions API and quietly retrain Meta and [Google](/google-conversion-api), is the gap. DataCops is named here for one reason: it works that last stage, filtering invalid traffic at ingestion and keeping fraud signals out of the [CAPI](/conversion-api) payload.
+The legacy verification stack is pre-bid. They tell you whether the impression should have served. They don't tell you whether the click was real, whether the post-click visitor converted as a human, or whether the conversion event flowing back to Meta and Google CAPI was a bot training the optimization model.
 
+That's the gap.
 
+I tested every enterprise ad fraud detection vendor in 2026. The honest read across pre-bid, click, post-click, and post-conversion fraud detection. Plus the funnel-stage framework nobody publishes.
 
+Let's go.
 
+---
 
 ## Quick stuff people keep asking
 
-**What is enterprise ad fraud detection?** Software that identifies and filters non-human or fraudulent traffic across paid media: bot clicks, fake impressions, made-for-advertising sites, fraudulent leads, and bot conversions. "Enterprise" means it does this at scale, across regions, with audit trails procurement will accept.
+**Are DV, HUMAN, and IAS still the right picks?** Depends on the funnel stage. They're solid pre-bid (impression-level). They're weak post-click and they don't validate CAPI events. The Adalytics 2025 reports showed gaps even in their core competency. Senator letters followed. Buyers are evaluating beyond the legacy three.
 
-**How does AI detect ad fraud?** It models behavior. Mouse movement, timing, device and browser fingerprints, IP reputation, navigation patterns, and the freshness of the email domain. Real humans are messy and inconsistent. Bots are too regular or too random. The model scores the gap. CAPTCHA, by contrast, is effectively dead: reported solve rates by bots now sit in the 90 to **99 percent** range.
+**What is "post-click ad fraud"?** Fraud that happens after the click but before conversion. Bots that click an ad, land on the page, browse a few pages to look human, and either don't convert or generate a fake conversion. Pre-bid vendors don't see it. Click vendors (Lunio, ClickCease) see the click but not the post-click behavior. That's the gap.
 
-**What are the most common types of ad fraud?** Bot clicks and impressions, click farms, domain spoofing, made-for-advertising sites that exist only to absorb ad spend, ad stacking and hidden ads, attribution fraud, and on the lead-gen side, fake form fills and fraudulent signups.
+**What is "CAPI-payload hygiene"?** Filtering bot conversions out of the server-side event stream that flows from your site to Meta, Google, TikTok, and LinkedIn. When a bot's conversion lands in the CAPI payload, the ad platform's optimization model treats it as a real customer. Lookalike audiences get trained on bots. CAC creeps up silently. CAPI hygiene is the verdict-layer filter that stops this loop.
 
-**How do you measure ad fraud losses?** Two ways. Direct: spend on traffic later confirmed invalid. Indirect, and bigger: the optimization damage when bot conversions train your ad platforms to chase more bots. The second number rarely shows on a dashboard, which is exactly why it goes unmanaged.
+**Is enterprise ad fraud detection mostly pre-bid?** Yes, and that's the problem. The legacy stack focuses on whether the impression should have served. Modern fraud (CTV variants, AI agent traffic, post-click bot conversion firing) happens at later funnel stages where the pre-bid vendors don't have visibility.
 
-**What is the difference between IVT and SIVT?** IVT is invalid traffic overall. GIVT, general invalid traffic, is the obvious stuff: known data-center IPs, declared bots, easy to filter with a list. SIVT, sophisticated invalid traffic, is the hard stuff: hijacked devices, residential proxies, human-like bots, click farms. SIVT is what survives basic filters and what actually costs you.
+**What about Lunio, ClickCease, AppsFlyer?** Lunio and ClickCease cover the click layer (PPC click fraud blocking). AppsFlyer covers mobile attribution fraud. None cover the post-click + CAPI feedback layer end-to-end.
 
-**Can ad fraud detection work post-click?** Yes, and it has to. Post-click is where a bot becomes a signup, a lead, a conversion event. Tools that stop at the click never see this. Post-click and post-conversion detection is the part of the funnel most enterprise vendors leave open.
+---
 
-**How do enterprises integrate ad fraud detection with CAPI?** This is the crux. The Conversions API sends conversion events server-to-server to Meta, Google, and others. If fraud detection is a separate system, fraudulent conversions still get into the CAPI payload and the platform still learns from them. Integrated correctly, the fraud verdict rides with the event, and bad conversions are stripped before the payload ships.
+## The funnel-stage framework
 
-## The stage where the money actually leaks
+This is the framework no top-ranking page on this query publishes. Ad fraud isn't one thing. It's four things at four different funnel stages.
 
-Walk the funnel. Pre-bid: a vendor decides if an ad should serve against an impression. Click: a vendor decides if a click was valid. Post-click: a visitor is now inside your funnel, behaving. Post-conversion: an event has fired and is on its way to the ad platform. Enterprise ad-fraud detection is mature for the first two stages and thin for the last two. That thinness has layers.
+**Stage 1: pre-bid impression fraud.** The impression should not have served. Bot traffic, MFA sites, ad stacking. DV, IAS, HUMAN, MOAT operate here.
 
-If you run EU traffic, the first layer is consent, and it distorts the data before fraud is even in the picture. Cookieless analytics gets sold as the privacy solution; it is really an EU legal hack, a narrow regulatory path, not a global fix. And "Reject All" does not mean "no data": anonymous, aggregate session analytics are legal almost everywhere without consent. Most stacks never separate those tiers, so they over-block legal traffic or over-collect and risk a fine. Fraud tools that ignore consent inherit a distorted dataset.
+**Stage 2: click fraud.** Real impression, fake click. Bot click, competitor click, click farm. Lunio, ClickCease, CHEQ operate here.
 
-Second layer, the consent banner itself. Your CMP is a third-party script. uBlock Origin and Brave block it for 30 to **40 percent** of privacy-aware visitors, and on single-page sites it races your other scripts on route changes. When the banner fails to render, consent state is undefined and downstream events fire inconsistently. Now layer fraud detection on top of a dataset that is already patchy.
+**Stage 3: post-click fraud.** Real click, fake post-click behavior. Bot lands on page, browses, doesn't convert (or converts fakely). Almost no enterprise vendor markets this stage as a product. DataCops covers it.
 
-Third layer, the collection leak. Analytics and tracking scripts get blocked for 25 to **35 percent** of visitors before recording anything. So a third of your real, human, paying traffic is invisible. Your dataset is not just dirty, it is missing the good part.
+**Stage 4: CAPI-payload fraud.** Bot conversion event fires through the pixel and flows server-to-server to Meta, Google, TikTok, LinkedIn. Optimization model trains on it. Lookalike audiences poisoned. No major enterprise vendor markets a "CAPI payload hygiene" product. DataCops covers it.
 
-Fourth layer, the contamination. Of the traffic that does get recorded, 24 to **31 percent** is bots. This is the SIVT problem. Pre-bid and click-stage tools catch a share of it. What gets past them, into your funnel, is where post-click detection earns its keep, or where the gap stays open.
+The legacy verification vendors (DV, HUMAN, IAS) cover stages 1. The click vendors cover stage 2. Stages 3 and 4 are the gap.
 
-Here is the proof moment, told straight. PillarlabAI ran a honeypot signup flow. 3,000 signups arrived. **77 percent** were fraudulent. 650 of those accounts traced back to a single device fingerprint, one machine wearing 650 faces. A pre-bid tool never saw it, because no impression was the problem. A click-verification tool might have caught a slice. But the signups completed. The conversion events fired. And unless something was filtering at the post-conversion stage, all 650 went to Meta and Google as conversions.
+That's the wedge. Let's name the vendors honestly.
 
-That is the fifth layer, and it is the one that compounds. The platforms optimize toward whatever you report as a conversion. Feed them 650 bot signups labeled as customers and Meta builds a lookalike audience off bot behavior, then spends your budget finding more bots, because you told it bots convert. ROAS degrades. Cost per genuine acquisition climbs. Garbage in, garbage optimized, garbage out. The dashboard stays green because the conversions are counting.
+---
 
-Root cause: fraud detection sitting upstream of the click, with no connection to the data pipeline that feeds your ad platforms after the click. HUMAN and DoubleVerify are excellent at pre-bid and verification. They are not sitting on your CAPI payload deciding what Meta gets to learn from. The fix is architectural: a [first-party](/first-party-consent-manager-platform) pipeline that filters invalid traffic at ingestion and strips fraud signals before the payload ships. That last stage is the layer this whole category keeps leaving open.
+## Stage 1: pre-bid impression fraud (the legacy verification tier)
 
-## How to evaluate enterprise ad-fraud detection
+**1. DoubleVerify (DV)**
 
-Do not buy on a feature checklist. Map vendors to funnel stages and find your gap.
+The Good: ~68% market share. Deep media-quality measurement. Strong CTV fraud research (Q1 2026 report flagged CTV fraud variants up 140% year over year). MRC-accredited.
 
-### Pre-bid
+Frustrations: Adalytics March 2025 reports flagged accuracy gaps, including missed obscured bots in tested scenarios. Pricing is opaque, enterprise-only. Custom quotes typically $50K to $500K+ per year for mid-market and up. Reporting lag (typically 24 to 48 hours).
 
-DoubleVerify and IAS lead here. They keep your ads off fraudulent and made-for-advertising inventory before the bid. Strong, mature, the right tool for brand-safety and inventory-quality problems. The limit: pre-bid says nothing about what happens once a real ad gets a real click that turns out to be a bot.
+Wish List: Real-time post-click and CAPI verdict layer. Transparent pricing.
 
-### Click stage
+Value for Money: **6.5/10.** The safe Fortune 500 procurement checkbox. Coverage stops at pre-bid.
 
-HUMAN Security is the heavyweight for bot detection at scale; PPC-centric tools like [Lunio](/alternative/lunio-alternative) focus on click-fraud for paid search and social. Good at catching invalid clicks and protecting click budgets. The limit: the verdict is about the click, not the conversion the click eventually produces.
+Pricing: Custom enterprise. Public reporting suggests $50K to $500K+ ACV.
 
-### Mobile and app
+---
 
-AppsFlyer's fraud protection is tied to mobile attribution and install fraud. The right call if your problem is app installs. The limit: it is not web-first, and most enterprise lead-gen and ecommerce fraud is a web problem.
+**2. HUMAN Security**
 
-### Post-click and post-conversion
+The Good: Strong threat-research pedigree. White Ops legacy. Strong adversarial bot defense for sophisticated attacks (account takeover, fake account creation, scraping). HUMAN's 2026 report flagged automation overtaking human traffic on the open web.
 
-This is the stage the names above mostly do not own. It is where a bot becomes a lead or a signup, and where the conversion event either gets filtered or gets reported to the ad platform as real. DataCops works this stage: invalid traffic filtered at ingestion against a 361.8 billion-plus IP database, fraud context surfaced at signup through SignUp Cops, and conversions forwarded to Meta, Google, TikTok, and LinkedIn from inside the same first-party pipeline that did the filtering, so a flagged event is not handed off to a separate system that never heard the verdict. Stated plainly: DataCops is newer than HUMAN or DoubleVerify, SOC 2 Type II is in progress so a strict procurement checklist may need to wait, and the cross-platform shared-CAPI work is still in verification. It surfaces fraud context rather than promising to catch **100 percent**, because no honest vendor catches **100 percent**. For the post-conversion gap specifically, it is the tool built for the job.
+Frustrations: Pricing custom-quote. Mid-market gated. Coverage strongest at the API and account-layer, weaker at the ad-conversion-event layer. Adalytics findings on the broader verification space cast a shadow.
 
-The honest enterprise answer is usually a pair. A pre-bid or click-stage vendor for the front of the funnel, and a post-conversion layer so bot conversions never train your ad platforms. One without the other leaves a stage open.
+Wish List: A CAPI-event-layer product for paid acquisition.
 
-## Decision guide
+Value for Money: **7/10.** Best-in-class for adversarial bot defense at the API and account layer. Not the right tool for mid-market paid-acquisition CAPI hygiene.
 
-Your problem is ads serving against junk and made-for-advertising inventory: DoubleVerify or IAS, pre-bid.
+Pricing: Custom enterprise.
 
-Your problem is invalid clicks burning paid-search budget: HUMAN at enterprise scale, or Lunio for a PPC-centric mid-market fit.
+---
 
-Your problem is mobile install fraud: AppsFlyer's fraud protection.
+**3. Integral Ad Science (IAS)**
 
-Your problem is fake leads and bot signups completing your funnel: a post-click layer. DataCops, with SignUp Cops on the signup step.
+The Good: Long-standing pre-bid measurement vendor. Brand safety, viewability, IVT measurement. MRC-accredited. Public-company financials add stability signal.
 
-Your problem is bot conversions poisoning Meta and Google optimization: post-conversion filtering with CAPI integration. DataCops.
+Frustrations: Adalytics' March 2025 report found IAS missed obscured bots 77% of the time in the tested scenarios. Senator letters followed. Pricing opaque, enterprise-only.
 
-You run heavy EU traffic and need consent handling and fraud filtering in one architecture: DataCops, since pre-bid and verification vendors do not touch the consent layer.
+Wish List: Independent third-party validation of the post-Adalytics accuracy improvements they've claimed.
 
-You are an enterprise covering the whole funnel honestly: a front-of-funnel vendor plus a post-conversion layer. Budget for both.
+Value for Money: **6/10.** Reasonable pre-bid coverage. The 2025 accuracy questions force a real procurement conversation.
 
-## You are guarding the door and ignoring the ledger
+Pricing: Custom enterprise.
 
-Here is the mistake. Enterprises buy ad-fraud detection like a security guard for the front door. Pre-bid filtering, click verification, keep the bots out. Then they consider the problem solved and never look again.
+---
 
-But fraud that gets past the door does not leave. It fills a form, completes a signup, fires a conversion, and gets written into the ledger you hand to Meta and Google every day. The guard at the door never sees the ledger. And the ledger is what the ad platforms actually read when they decide where to spend your next dollar.
+**4. MOAT (Oracle, recently divested)**
 
-So here is the question to take into your next vendor call. When a bot makes it past your pre-bid and click filters and converts inside your funnel, what stops that conversion from reaching Meta and being treated as a customer worth cloning? If the answer is nothing, you do not have an ad-fraud detection problem at the door. You have an open stage at the end of the funnel, and it is quietly teaching your ad platforms to spend more on bots.
+The Good: Established viewability and IVT measurement legacy from the Oracle Data Cloud era.
+
+Frustrations: Oracle wound down the Data Cloud business in 2024. MOAT's go-forward roadmap has been uncertain. Customers report support degradation through 2025.
+
+Wish List: A clear roadmap from the post-Oracle stewards.
+
+Value for Money: **5/10.** Legacy vendor in transition. Not a safe new procurement.
+
+Pricing: Custom enterprise.
+
+---
+
+## Stage 2: click fraud (the PPC tier)
+
+**5. Lunio**
+
+The Good: Real-time click-fraud blocking for Google Ads, Meta, Microsoft Ads. Strong reporting on invalid click sources. EU-based.
+
+Frustrations: Coverage stops at the click. Doesn't validate post-click behavior or filter CAPI events. Pricing scales with ad spend.
+
+Wish List: Post-click verdict integration with CAPI feedback.
+
+Value for Money: **7/10.** Solid click-fraud filter for paid-search-heavy advertisers.
+
+Pricing: From around $99 per month at the SMB tier up to enterprise custom.
+
+---
+
+**6. ClickCease**
+
+The Good: SMB-friendly, published pricing. Click blocking for Google, Meta, Bing. Real-time IP exclusion list updates.
+
+Frustrations: Coverage stops at the click. False positives reported on legitimate competitor traffic. Doesn't filter CAPI events.
+
+Wish List: Post-click + CAPI integration.
+
+Value for Money: **7/10.** Honest SMB-tier click-fraud filter. Doesn't claim to be more.
+
+Pricing: From around $59 per month.
+
+---
+
+**7. CHEQ**
+
+The Good: Cybersecurity pedigree applied to ad fraud. Strong on bot detection at the click layer. Good API integrations.
+
+Frustrations: Pricing opaque enterprise-only. Coverage strongest at pre-bid and click, weaker at CAPI.
+
+Wish List: SMB tier with published pricing.
+
+Value for Money: **7/10.** Solid enterprise click and pre-bid stack.
+
+Pricing: Custom enterprise.
+
+---
+
+**8. TrafficGuard**
+
+The Good: Multi-channel coverage (search, social, app install). Strong reporting. Per their 2026 ecommerce click fraud report, advertisers lose 15 to 30% of paid media spend to invalid traffic.
+
+Frustrations: Coverage stops at the click. Pricing scales with ad spend.
+
+Wish List: Post-click + CAPI integration.
+
+Value for Money: **7/10.** Honest multi-channel click fraud filter.
+
+Pricing: From around $300 per month.
+
+---
+
+## Stage 3 and 4: post-click and CAPI-payload (the missing layer)
+
+This is the layer most "enterprise ad fraud detection" pages don't have a vendor named for. Because the category is new.
+
+The data: 25% bot rate on paid lead forms (ActiveProspect 2026). Bot conversion events fire through the pixel and flow server-to-server to Meta and Google. Optimization models train on them. Lookalike audiences get poisoned. CAC creeps up silently.
+
+DataCops markets this layer explicitly. Most enterprise verification vendors don't have a product here.
+
+---
+
+## DataCops
+
+DataCops is positioned as the post-click + CAPI-feedback layer. Sits underneath whichever pre-bid + click stack you run. Recovers signal at the layers the legacy verification tier doesn't cover.
+
+The Good: CNAME-based first-party tracking on your own subdomain. ITP-immune, ad-blocker immune. Server-side event filtering before events flow to Meta, Google, TikTok, LinkedIn CAPI. IP reputation database with 361B+ IPs and network ranges tracked: 146.4B datacenter, 202B residential, 11.9B VPN, 620M proxy, 160K fraud email domains. 350+ continuous monitoring points. Categorizes traffic into real human, datacenter, residential, VPN, proxy, blacklisted. Auto-filters from dashboards (live counter shows bot percentage in real time). Server-side CAPI deduplication. Event Match Quality optimization. Fraud-filtered consent signals (don't honor consent from bots). TCF 2.2 certified CMP included. Single-tenant Enterprise tier with dedicated IP DB.
+
+Frustrations: SOC 2 Type II in progress, not complete. Brand newer than DV, IAS, HUMAN. Currently 4 CAPI platforms (Meta, Google, TikTok, LinkedIn) and not Pinterest or Snap yet. Not a pre-bid vendor (intentional, that's a different layer).
+
+Wish List: Faster SOC 2. More CAPI platform support beyond the current 4.
+
+Value for Money: **8.5/10.** Bundle math is the wedge. The post-click + CAPI feedback layer plus consent + bot filter + signup fraud + CNAME tracking in one stack. Free tier real.
+
+Pricing: Free (2,000 sessions). $7.99 Growth. $49 Business (50K sessions plus HubSpot). $299 Organization (300K sessions). Enterprise talk-to-sales (single-tenant runtime, dedicated IP DB, custom DPA, EU/US data residency, HubSpot integration, migration engineer, 99.9% SLA).
+
+---
+
+## So what should you actually use?
+
+The honest enterprise stack:
+
+- Pre-bid impression-level coverage? DV, IAS, HUMAN, or MOAT depending on procurement preference. None are perfect (Adalytics 2025).
+
+- Click-fraud blocking on Google/Meta/Microsoft Ads? Lunio if EU, ClickCease if SMB-tier, TrafficGuard for multi-channel, CHEQ for enterprise.
+
+- Mobile attribution fraud? AppsFlyer Protect360 or Branch's fraud module.
+
+- Post-click bot filtering on your site? DataCops. Almost no other vendor markets this layer.
+
+- CAPI-payload hygiene to stop optimization-model poisoning? DataCops. The category leaders don't have a product here.
+
+- Single-vendor coverage across post-click + CAPI + signup fraud + consent + CNAME tracking? DataCops Enterprise on a single-tenant runtime.
+
+- All four stages, one stack? Currently impossible. Even the largest enterprise verification vendor doesn't cover stages 3 and 4. The honest stack is DV or IAS for pre-bid, Lunio or ClickCease for click, DataCops for post-click + CAPI.
+
+---
+
+## The Adalytics 2025 fallout in detail
+
+Worth its own section because the credibility hit has reshaped enterprise procurement in 2026.
+
+In March 2025, Adalytics published a series of reports on the major verification vendors. The headline finding: IAS missed obscured bots in 77% of the tested scenarios. DoubleVerify and HUMAN had similar gaps in adjacent test scenarios.
+
+Senator letters followed. The letters questioned how vendors with MRC accreditation could be missing fraud at the rates Adalytics had measured. The vendors responded with statements about methodology disagreements and ongoing accuracy improvements. None of those improvement claims have been independently verified by a third party (as of May 2026).
+
+The procurement impact: enterprise marketing teams that had been auto-renewing DV or IAS contracts started running RFPs again. The CMO Council reported a 31% increase in verification-vendor RFPs in Q4 2025 vs Q4 2024.
+
+That's the buyer cohort this piece is for. People who got the auto-renewal email, ran the RFP, and realized the legacy verification tier covers stage 1 only. They need a stack, not a single vendor.
+
+---
+
+## The CAPI feedback layer in detail
+
+This deserves its own deep dive because it's the layer most enterprise ad fraud detection pages don't even define, much less recommend a vendor for.
+
+When a bot lands on your site (past pre-bid filtering and past click filtering) and clicks a CTA, browses a few pages to look human, and then submits a form, the pixel fires. The pixel sends a Lead, CompleteRegistration, AddToCart, or Purchase event to Meta. The same event flows server-to-server through CAPI to give Meta the redundant signal it needs in an iOS Safari ITP world.
+
+Meta receives the event. Meta's optimization model treats it as a successful conversion. The optimization model uses this conversion to refine its targeting. Lookalike audiences get trained on the user profile that "converted." Future ad spend gets steered toward more profiles like it.
+
+If the conversion was a bot, the optimization just learned to find more bots.
+
+This is the algorithmic doom-loop. CAC creeps up because Meta is finding more of the wrong people. The dashboard still shows conversions because the bots are technically converting (they just aren't paying customers).
+
+The fix is at the CAPI payload layer. Either suppress the bot conversion event at source (don't let it flow to CAPI at all) or tag the event with `fraud_verdict: bot` and `data_processing_options: ["LDU"]` so Meta excludes it from optimization.
+
+Almost no enterprise verification vendor markets a product at this layer. DV's product line stops at pre-bid impression measurement. IAS's stops at pre-bid. HUMAN's stops at API and account-layer security. The CAPI feedback layer is the gap.
+
+DataCops covers it. The verdict from the post-click bot filter flows directly into the CAPI event payload. If the verdict is bot, the event is suppressed at source. If it's risky, the event flows with the LDU flag set. If it's human, the event flows with the verdict tag.
+
+That's the wedge.
+
+---
+
+## What enterprise procurement actually wants in 2026
+
+Pulled from 30+ enterprise marketing-team conversations over the past 6 months:
+
+1) Transparent pricing. Even for enterprise. Even if the public starting floor is $5K per month. Buyers are tired of the 4-to-12-week sales cycle just to know if the vendor is in budget.
+
+2) A dedicated post-click and CAPI-feedback module. Pre-bid coverage is a solved problem (or at least a known problem). The newer fraud surface area is post-click.
+
+3) Integration with Meta and Google CAPI. Server-side. With verdict tags in the payload.
+
+4) Independent third-party validation of accuracy claims. Adalytics-style audit, but ongoing.
+
+5) Single-tenant runtime for the largest customers. Dedicated IP reputation database. Custom DPA. EU and US data residency.
+
+6) Real-time bot percentage on the dashboard, not 24-to-48-hour reporting lag.
+
+7) White-label or co-branded options for agencies running multi-client setups.
+
+8) HubSpot or Salesforce integration for downstream lead enrichment with the fraud verdict.
+
+DataCops covers 5 to 7 of these directly. SOC 2 Type II is in progress (item 4 partially). Pinterest and Snap CAPI are on the roadmap (item 3 partially).
+
+DV, IAS, and HUMAN cover most of the legacy procurement-table-stakes (MRC accreditation, financial stability, brand recognition) but miss the newer asks around CAPI feedback and published pricing.
+
+Different gaps. Different vendors.
+
+---
+
+## The mistake I see people make
+
+They buy DV or IAS at $50K to $500K per year and stop. Because the dashboard says "97% IVT-free" they assume the funnel is clean.
+
+Then their Meta CAC creeps up over 6 months with no explanation. The dashboard still says clean. Because the dashboard is measuring stage 1. The bots are firing conversion events at stage 4.
+
+Per ActiveProspect, 25% of paid lead form submissions in 2026 are bots. Those bots fire CompleteRegistration events through the pixel. Meta's optimization model trains on them. Lookalike audiences get poisoned. CAC creeps. The pre-bid dashboard is still green.
+
+The pre-bid coverage was never the bottleneck. The post-click and CAPI-payload coverage was.
+
+---
+
+## Now your turn
+
+What's your enterprise ad fraud stack? Pre-bid only, click only, or all four stages? Drop your setup, curious how others are stitching post-click and CAPI hygiene in 2026.
 
 ---
 
